@@ -1,0 +1,26 @@
+{
+  "name": "ada-ide",
+  "version": "1.0.0",
+  "description": "Platform manajemen ide konten untuk kreator",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "build": "esbuild src/index.ts --bundle --format=esm --outfile=dist/index.js",
+    "db:create": "wrangler d1 create ada-ide-db",
+    "db:migrate": "wrangler d1 execute ada-ide-db --file=./src/db/schema.sql",
+    "db:migrate:local": "wrangler d1 execute ada-ide-db --local --file=./src/db/schema.sql",
+    "r2:create": "wrangler r2 bucket create ada-ide-storage"
+  },
+  "keywords": ["cloudflare", "workers", "hono", "content-creator"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "hono": "^4.0.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240000.0",
+    "esbuild": "^0.20.0",
+    "wrangler": "^3.0.0"
+  }
+}

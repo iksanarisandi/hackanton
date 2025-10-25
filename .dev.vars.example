@@ -1,0 +1,5 @@
+# Copy this file to .dev.vars for local development
+# DO NOT commit .dev.vars to git
+
+JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+ENVIRONMENT=development

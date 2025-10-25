@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.wrangler/
+.dev.vars
+.env
+*.log
+.DS_Store
+
+# Keep wrangler.toml.example but ignore the actual config with secrets
+wrangler.toml

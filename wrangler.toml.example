@@ -1,0 +1,24 @@
+name = "ada-ide"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+# Serve static assets from public folder
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# D1 Database
+[[d1_databases]]
+binding = "DB"
+database_name = "ada-ide-db"
+database_id = "your-database-id-here"
+
+# R2 Storage
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "ada-ide-storage"
+
+# Environment variables
+[vars]
+JWT_SECRET = "your-secure-random-jwt-secret-here"
+ENVIRONMENT = "production"

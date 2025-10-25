@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ada Ide - Kelola Ide Konten Anda</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    
+    <!-- Auth Section -->
+    <div id="auth-section" class="min-h-screen flex items-center justify-center px-4">
+        <div class="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold text-gray-800 mb-2">Ada Ide</h1>
+                <p class="text-gray-600">Platform Manajemen Ide Konten</p>
+            </div>
+
+            <div class="mb-6 flex border-b">
+                <button id="login-tab" class="flex-1 py-3 font-semibold border-b-2 border-blue-500 text-blue-500">Login</button>
+                <button id="register-tab" class="flex-1 py-3 font-semibold text-gray-500">Register</button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                    <input type="email" id="login-email" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                    <input type="password" id="login-password" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                <button type="submit" class="w-full bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 transition">Login</button>
+            </form>
+
+            <!-- Register Form -->
+            <form id="register-form" class="space-y-4 hidden">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                    <input type="email" id="register-email" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Password (min 6 karakter)</label>
+                    <input type="password" id="register-password" required minlength="6" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                <button type="submit" class="w-full bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 transition">Register</button>
+            </form>
+
+            <div id="auth-error" class="mt-4 p-3 bg-red-100 text-red-700 rounded-lg hidden"></div>
+        </div>
+    </div>
+
+    <!-- Main App Section -->
+    <div id="app-section" class="hidden">
+        <!-- Navbar -->
+        <nav class="bg-white shadow-sm border-b">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center h-16">
+                    <div class="flex items-center">
+                        <h1 class="text-2xl font-bold text-gray-800">Ada Ide</h1>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <button id="nav-dashboard" class="px-4 py-2 text-gray-700 hover:text-blue-500 font-medium">Dashboard</button>
+                        <button id="nav-stats" class="px-4 py-2 text-gray-700 hover:text-blue-500 font-medium">Statistik</button>
+                        <span id="user-email" class="text-sm text-gray-600"></span>
+                        <button id="logout-btn" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition">Logout</button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Dashboard Page -->
+        <div id="dashboard-page" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <!-- Header & Controls -->
+            <div class="mb-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-3xl font-bold text-gray-800">Daftar Ide</h2>
+                    <button id="add-idea-btn" class="px-6 py-3 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600 transition">+ Tambah Ide Baru</button>
+                </div>
+
+                <!-- Filters -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <input type="text" id="search-input" placeholder="Cari ide..." class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <select id="status-filter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="">Semua Status</option>
+                        <option value="draft">Draft</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="ready">Ready</option>
+                        <option value="published">Published</option>
+                    </select>
+                    <input type="text" id="tag-filter" placeholder="Filter by tag..." class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+
+            <!-- Ideas List -->
+            <div id="ideas-list" class="space-y-4">
+                <!-- Ideas will be loaded here -->
+            </div>
+
+            <!-- Pagination -->
+            <div id="pagination" class="mt-8 flex justify-center items-center space-x-2">
+                <!-- Pagination will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Statistics Page -->
+        <div id="stats-page" class="hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <h2 class="text-3xl font-bold text-gray-800 mb-8">Statistik</h2>
+            
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-gray-500 text-sm font-medium mb-2">Total Ide</h3>
+                    <p id="stat-total-ideas" class="text-3xl font-bold text-gray-800">0</p>
+                </div>
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-gray-500 text-sm font-medium mb-2">Total Lampiran</h3>
+                    <p id="stat-total-attachments" class="text-3xl font-bold text-gray-800">0</p>
+                </div>
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-gray-500 text-sm font-medium mb-2">Total Storage</h3>
+                    <p id="stat-total-storage" class="text-3xl font-bold text-gray-800">0 MB</p>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Ide per Status</h3>
+                    <canvas id="status-chart"></canvas>
+                </div>
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Ide per Bulan (12 Bulan Terakhir)</h3>
+                    <canvas id="monthly-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Add/Edit Idea -->
+    <div id="idea-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center px-4 z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b">
+                <h3 id="modal-title" class="text-2xl font-bold text-gray-800">Tambah Ide Baru</h3>
+            </div>
+            <form id="idea-form" class="p-6 space-y-4">
+                <input type="hidden" id="idea-id">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Judul *</label>
+                    <input type="text" id="idea-title" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Deskripsi</label>
+                    <textarea id="idea-description" rows="4" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Tags (pisahkan dengan koma)</label>
+                    <input type="text" id="idea-tags" placeholder="tutorial, tips, review" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                    <select id="idea-status" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="draft">Draft</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="ready">Ready</option>
+                        <option value="published">Published</option>
+                    </select>
+                </div>
+                <div id="modal-error" class="p-3 bg-red-100 text-red-700 rounded-lg hidden"></div>
+                <div class="flex space-x-4">
+                    <button type="submit" class="flex-1 bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 transition">Simpan</button>
+                    <button type="button" id="cancel-modal-btn" class="flex-1 bg-gray-300 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-400 transition">Batal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Idea Detail -->
+    <div id="detail-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center px-4 z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b flex justify-between items-center">
+                <h3 id="detail-title" class="text-2xl font-bold text-gray-800"></h3>
+                <button id="close-detail-btn" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+            <div class="p-6">
+                <div class="mb-6">
+                    <div class="flex items-center space-x-4 mb-4">
+                        <span id="detail-status" class="px-3 py-1 rounded-full text-sm font-semibold"></span>
+                        <span id="detail-days" class="text-sm text-gray-600"></span>
+                    </div>
+                    <p id="detail-description" class="text-gray-700 mb-4"></p>
+                    <div id="detail-tags" class="flex flex-wrap gap-2 mb-4"></div>
+                    <p class="text-sm text-gray-500">Dibuat: <span id="detail-created"></span></p>
+                    <p class="text-sm text-gray-500">Diperbarui: <span id="detail-updated"></span></p>
+                </div>
+
+                <div class="border-t pt-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h4 class="text-lg font-semibold text-gray-800">Lampiran</h4>
+                        <label class="px-4 py-2 bg-blue-500 text-white rounded-lg cursor-pointer hover:bg-blue-600 transition">
+                            + Upload
+                            <input type="file" id="file-upload" class="hidden">
+                        </label>
+                    </div>
+                    <div id="attachments-list" class="space-y-2">
+                        <!-- Attachments will be loaded here -->
+                    </div>
+                </div>
+
+                <div class="mt-6 flex space-x-4">
+                    <button id="edit-idea-btn" class="flex-1 bg-yellow-500 text-white py-3 rounded-lg font-semibold hover:bg-yellow-600 transition">Edit</button>
+                    <button id="delete-idea-btn" class="flex-1 bg-red-500 text-white py-3 rounded-lg font-semibold hover:bg-red-600 transition">Hapus</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
