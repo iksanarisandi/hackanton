@@ -1,7 +1,15 @@
 import { Hono } from 'hono';
 import { Env, Idea, Attachment } from '../types';
+import { rateLimitMiddleware } from '../utils/rateLimiter';
 
 const ideas = new Hono<{ Bindings: Env }>();
+
+// Apply rate limiting to idea creation
+ideas.use('/', rateLimitMiddleware('CREATE_IDEA', (c) => {
+  if (c.req.method !== 'POST') return ''; // Only limit POST requests
+  const userId = c.get('userId');
+  return `create-idea:user:${userId}`;
+}));
 
 ideas.get('/', async (c) => {
   const userId = c.get('userId');
@@ -85,6 +93,19 @@ ideas.post('/', async (c) => {
 
     if (!title || title.trim() === '') {
       return c.json({ error: 'Title is required' }, 400);
+    }
+
+    // Input length validation
+    if (title.length > 255) {
+      return c.json({ error: 'Title too long (max 255 characters)' }, 400);
+    }
+
+    if (description && description.length > 5000) {
+      return c.json({ error: 'Description too long (max 5000 characters)' }, 400);
+    }
+
+    if (tags && tags.length > 500) {
+      return c.json({ error: 'Tags too long (max 500 characters)' }, 400);
     }
 
     const validStatuses = ['draft', 'in_progress', 'ready', 'published'];

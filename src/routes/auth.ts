@@ -1,8 +1,20 @@
 import { Hono } from 'hono';
 import { Env, User } from '../types';
 import { hashPassword, verifyPassword, generateJWT } from '../utils/auth';
+import { rateLimitMiddleware } from '../utils/rateLimiter';
 
 const auth = new Hono<{ Bindings: Env }>();
+
+// Apply rate limiting to auth endpoints
+auth.use('/register', rateLimitMiddleware('AUTH', (c) => {
+  const ip = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown';
+  return `auth:register:${ip}`;
+}));
+
+auth.use('/login', rateLimitMiddleware('AUTH', (c) => {
+  const ip = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown';
+  return `auth:login:${ip}`;
+}));
 
 auth.post('/register', async (c) => {
   try {
@@ -12,8 +24,28 @@ auth.post('/register', async (c) => {
       return c.json({ error: 'Email and password are required' }, 400);
     }
 
-    if (password.length < 6) {
-      return c.json({ error: 'Password must be at least 6 characters' }, 400);
+    // Input length validation
+    if (email.length > 255) {
+      return c.json({ error: 'Email too long' }, 400);
+    }
+
+    if (password.length < 8) {
+      return c.json({ error: 'Password must be at least 8 characters' }, 400);
+    }
+
+    if (password.length > 128) {
+      return c.json({ error: 'Password too long' }, 400);
+    }
+
+    // Password complexity check
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+
+    if (!hasUpperCase || !hasLowerCase || !hasNumber) {
+      return c.json({ 
+        error: 'Password must contain uppercase, lowercase, and numbers' 
+      }, 400);
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -57,19 +89,35 @@ auth.post('/login', async (c) => {
       return c.json({ error: 'Email and password are required' }, 400);
     }
 
+    // Check if account is locked due to failed attempts
+    const { checkFailedAttempts, recordFailedAttempt, clearFailedAttempts } = await import('../utils/rateLimiter');
+    
+    const lockStatus = await checkFailedAttempts(c, email);
+    if (lockStatus.locked) {
+      return c.json({
+        error: 'Account temporarily locked due to too many failed attempts',
+        retryAfter: lockStatus.remainingTime,
+      }, 429);
+    }
+
     const user = await c.env.DB.prepare(
       'SELECT id, email, password FROM users WHERE email = ?'
     ).bind(email).first<User>();
 
     if (!user) {
+      await recordFailedAttempt(c, email);
       return c.json({ error: 'Invalid email or password' }, 401);
     }
 
     const validPassword = await verifyPassword(password, user.password);
 
     if (!validPassword) {
+      await recordFailedAttempt(c, email);
       return c.json({ error: 'Invalid email or password' }, 401);
     }
+
+    // Clear failed attempts on successful login
+    await clearFailedAttempts(c, email);
 
     const token = await generateJWT({ userId: user.id, email: user.email }, c.env.JWT_SECRET);
 

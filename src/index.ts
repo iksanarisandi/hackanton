@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { secureHeaders } from 'hono/secure-headers';
 import { Env } from './types';
 import { authMiddleware } from './utils/auth';
 import auth from './routes/auth';
@@ -10,10 +11,27 @@ import { serveStatic } from 'hono/cloudflare-workers';
 
 const app = new Hono<{ Bindings: Env }>();
 
+// Security headers
+app.use('*', secureHeaders({
+  contentSecurityPolicy: {
+    defaultSrc: ["'self'"],
+    scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com", "https://cdn.jsdelivr.net"],
+    styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+    fontSrc: ["'self'", "https://fonts.gstatic.com"],
+    imgSrc: ["'self'", "data:", "https:", "blob:"],
+    connectSrc: ["'self'"],
+    mediaSrc: ["'self'", "https:", "blob:"],
+  },
+  xFrameOptions: 'DENY',
+  xContentTypeOptions: 'nosniff',
+  referrerPolicy: 'strict-origin-when-cross-origin',
+}));
+
 app.use('*', cors({
   origin: '*',
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization'],
+  maxAge: 86400,
 }));
 
 app.route('/api/auth', auth);

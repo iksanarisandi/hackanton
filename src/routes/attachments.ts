@@ -1,10 +1,24 @@
 import { Hono } from 'hono';
 import { Env, Attachment, Idea } from '../types';
 import { generateFileName, isValidFileType } from '../utils/r2';
+import { rateLimitMiddleware } from '../utils/rateLimiter';
+import { checkStorageQuota, checkIdeaFileLimit, updateStorageUsage, getStorageInfo } from '../utils/storageQuota';
+import { validateFile } from '../utils/fileValidation';
 
 const attachments = new Hono<{ Bindings: Env }>();
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+// Apply rate limiting
+attachments.use('/add-url', rateLimitMiddleware('ADD_URL', (c) => {
+  const userId = c.get('userId');
+  return `add-url:user:${userId}`;
+}));
+
+attachments.use('/upload', rateLimitMiddleware('UPLOAD', (c) => {
+  const userId = c.get('userId');
+  return `upload:user:${userId}`;
+}));
 
 attachments.post('/add-url', async (c) => {
   const userId = c.get('userId');
@@ -14,6 +28,15 @@ attachments.post('/add-url', async (c) => {
 
     if (!url || !idea_id) {
       return c.json({ error: 'URL and idea_id are required' }, 400);
+    }
+
+    // Input length validation
+    if (url.length > 2048) {
+      return c.json({ error: 'URL too long (max 2048 characters)' }, 400);
+    }
+
+    if (title && title.length > 500) {
+      return c.json({ error: 'Title too long (max 500 characters)' }, 400);
     }
 
     // Validate URL format
@@ -76,10 +99,30 @@ attachments.post('/upload', async (c) => {
       return c.json({ error: 'Idea not found or access denied' }, 404);
     }
 
+    // Check file size
     if (file.size > MAX_FILE_SIZE) {
       return c.json({ error: 'File size exceeds 10MB limit' }, 400);
     }
 
+    // Check storage quota
+    const quotaCheck = await checkStorageQuota(c, userId, file.size);
+    if (!quotaCheck.allowed) {
+      return c.json({ error: quotaCheck.reason }, 403);
+    }
+
+    // Check files per idea limit
+    const ideaLimitCheck = await checkIdeaFileLimit(c, parseInt(ideaId));
+    if (!ideaLimitCheck.allowed) {
+      return c.json({ error: ideaLimitCheck.reason }, 403);
+    }
+
+    // Enhanced file validation
+    const fileValidation = await validateFile(file);
+    if (!fileValidation.valid) {
+      return c.json({ error: fileValidation.error }, 400);
+    }
+
+    // Legacy validation (backwards compatibility)
     if (!isValidFileType(file.name)) {
       return c.json({ error: 'Invalid file type' }, 400);
     }
@@ -105,9 +148,16 @@ attachments.post('/upload', async (c) => {
       'SELECT * FROM attachments WHERE id = ?'
     ).bind(attachmentId).first<Attachment>();
 
+    // Update storage usage
+    await updateStorageUsage(c, userId, file.size, 1);
+
+    // Get updated storage info
+    const storageInfo = await getStorageInfo(c, userId);
+
     return c.json({
       message: 'File uploaded successfully',
-      attachment
+      attachment,
+      storage: storageInfo
     }, 201);
   } catch (error) {
     console.error('Upload error:', error);
@@ -156,9 +206,15 @@ attachments.delete('/:id', async (c) => {
       return c.json({ error: 'Access denied' }, 403);
     }
 
-    const fileKey = attachment.file_url.split('/').pop();
-    if (fileKey) {
-      await c.env.BUCKET.delete(fileKey);
+    // Delete from R2 if it's a file (not URL)
+    if (attachment.type === 'file') {
+      const fileKey = attachment.file_url.split('/').pop();
+      if (fileKey) {
+        await c.env.BUCKET.delete(fileKey);
+      }
+      
+      // Update storage usage (decrease)
+      await updateStorageUsage(c, userId, -attachment.size, -1);
     }
 
     await c.env.DB.prepare('DELETE FROM attachments WHERE id = ?').bind(attachmentId).run();
@@ -167,6 +223,19 @@ attachments.delete('/:id', async (c) => {
   } catch (error) {
     console.error('Delete attachment error:', error);
     return c.json({ error: 'Failed to delete attachment' }, 500);
+  }
+});
+
+// Get storage info endpoint
+attachments.get('/storage-info', async (c) => {
+  const userId = c.get('userId');
+
+  try {
+    const storageInfo = await getStorageInfo(c, userId);
+    return c.json({ storage: storageInfo });
+  } catch (error) {
+    console.error('Get storage info error:', error);
+    return c.json({ error: 'Failed to get storage info' }, 500);
   }
 });
 
