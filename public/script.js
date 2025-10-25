@@ -447,18 +447,53 @@ function displayAttachments(attachments) {
         return;
     }
 
-    container.innerHTML = attachments.map(att => `
-        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <div class="flex items-center space-x-3">
-                <span class="text-2xl">📄</span>
-                <div>
-                    <p class="font-medium text-gray-800">${escapeHtml(att.file_name)}</p>
-                    <p class="text-sm text-gray-500">${formatFileSize(att.size)}</p>
+    container.innerHTML = attachments.map(att => {
+        const fileExt = att.file_name.split('.').pop().toLowerCase();
+        const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(fileExt);
+        const isVideo = ['mp4', 'mov', 'avi', 'webm'].includes(fileExt);
+        const isAudio = ['mp3', 'wav', 'ogg'].includes(fileExt);
+        const isPdf = fileExt === 'pdf';
+        
+        let icon = '📄';
+        if (isImage) icon = '🖼️';
+        else if (isVideo) icon = '🎥';
+        else if (isAudio) icon = '🎵';
+        else if (isPdf) icon = '📕';
+        
+        return `
+            <div class="bg-gray-50 rounded-lg p-3 space-y-2">
+                ${isImage ? `
+                    <a href="${att.file_url}" target="_blank" class="block">
+                        <img src="${att.file_url}" alt="${escapeHtml(att.file_name)}" 
+                             class="w-full h-32 object-cover rounded-lg hover:opacity-90 transition cursor-pointer"
+                             onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                        <div style="display:none;" class="w-full h-32 bg-gray-200 rounded-lg flex items-center justify-center">
+                            <span class="text-4xl">${icon}</span>
+                        </div>
+                    </a>
+                ` : ''}
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3 flex-1 min-w-0">
+                        <span class="text-2xl flex-shrink-0">${icon}</span>
+                        <div class="flex-1 min-w-0">
+                            <p class="font-medium text-gray-800 truncate">${escapeHtml(att.file_name)}</p>
+                            <p class="text-xs text-gray-500">${formatFileSize(att.size)}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2 flex-shrink-0">
+                        <a href="${att.file_url}" target="_blank" download="${att.file_name}" 
+                           class="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition">
+                            ${isImage || isVideo || isAudio || isPdf ? 'Lihat' : 'Download'}
+                        </a>
+                        <button onclick="deleteAttachment(${att.id})" 
+                                class="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition">
+                            Hapus
+                        </button>
+                    </div>
                 </div>
             </div>
-            <button onclick="deleteAttachment(${att.id})" class="text-red-500 hover:text-red-700 font-semibold">Hapus</button>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 // Close Detail Modal

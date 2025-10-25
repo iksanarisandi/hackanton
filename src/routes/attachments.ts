@@ -47,7 +47,7 @@ attachments.post('/upload', async (c) => {
       },
     });
 
-    const fileUrl = `https://ada-ide-storage.${c.env.ENVIRONMENT === 'production' ? '' : 'dev.'}r2.cloudflarestorage.com/${fileName}`;
+    const fileUrl = `/api/attachments/file/${fileName}`;
 
     const result = await c.env.DB.prepare(
       'INSERT INTO attachments (idea_id, file_name, file_url, size) VALUES (?, ?, ?, ?)'
@@ -65,6 +65,30 @@ attachments.post('/upload', async (c) => {
   } catch (error) {
     console.error('Upload error:', error);
     return c.json({ error: 'Failed to upload file' }, 500);
+  }
+});
+
+attachments.get('/file/:fileName', async (c) => {
+  const fileName = c.req.param('fileName');
+
+  try {
+    const object = await c.env.BUCKET.get(fileName);
+
+    if (!object) {
+      return c.json({ error: 'File not found' }, 404);
+    }
+
+    const headers = new Headers();
+    object.writeHttpMetadata(headers);
+    headers.set('etag', object.httpEtag);
+    headers.set('Cache-Control', 'public, max-age=31536000');
+
+    return new Response(object.body, {
+      headers,
+    });
+  } catch (error) {
+    console.error('Get file error:', error);
+    return c.json({ error: 'Failed to get file' }, 500);
   }
 });
 
