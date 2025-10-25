@@ -2,6 +2,88 @@ const API_URL = window.location.origin;
 let token = localStorage.getItem('token');
 let currentPage = 1;
 let currentIdeaId = null;
+let currentDeleteCallback = null;
+
+// Notification System
+function showNotification(message, type = 'info') {
+    const notification = document.getElementById('notification');
+    const icon = document.getElementById('notification-icon');
+    const messageEl = document.getElementById('notification-message');
+    
+    messageEl.textContent = message;
+    
+    // Set icon and color based on type
+    if (type === 'success') {
+        icon.classList.add('text-green-500');
+        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />';
+    } else if (type === 'error') {
+        icon.classList.add('text-red-500');
+        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />';
+    } else {
+        icon.classList.add('text-blue-500');
+        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />';
+    }
+    
+    notification.classList.remove('hidden');
+    notification.classList.add('notification-enter');
+    
+    setTimeout(() => {
+        closeNotification();
+    }, 3000);
+}
+
+function closeNotification() {
+    const notification = document.getElementById('notification');
+    notification.classList.remove('notification-enter');
+    notification.classList.add('notification-exit');
+    
+    setTimeout(() => {
+        notification.classList.add('hidden');
+        notification.classList.remove('notification-exit');
+    }, 300);
+}
+
+// Confirmation Modal
+function showConfirmModal(message, onConfirm) {
+    const modal = document.getElementById('confirm-modal');
+    const messageEl = document.getElementById('confirm-message');
+    
+    messageEl.textContent = message;
+    currentDeleteCallback = onConfirm;
+    modal.classList.remove('hidden');
+}
+
+function closeConfirmModal() {
+    document.getElementById('confirm-modal').classList.add('hidden');
+    currentDeleteCallback = null;
+}
+
+document.getElementById('confirm-cancel-btn').addEventListener('click', closeConfirmModal);
+
+document.getElementById('confirm-delete-btn').addEventListener('click', async () => {
+    if (currentDeleteCallback) {
+        await currentDeleteCallback();
+        closeConfirmModal();
+    }
+});
+
+// Set Active Navigation
+function setActiveNav(page) {
+    const dashboardBtn = document.getElementById('nav-dashboard');
+    const statsBtn = document.getElementById('nav-stats');
+    
+    if (page === 'dashboard') {
+        dashboardBtn.classList.add('bg-blue-500', 'text-white');
+        dashboardBtn.classList.remove('text-gray-700', 'hover:text-blue-500');
+        statsBtn.classList.remove('bg-blue-500', 'text-white');
+        statsBtn.classList.add('text-gray-700', 'hover:text-blue-500');
+    } else if (page === 'stats') {
+        statsBtn.classList.add('bg-blue-500', 'text-white');
+        statsBtn.classList.remove('text-gray-700', 'hover:text-blue-500');
+        dashboardBtn.classList.remove('bg-blue-500', 'text-white');
+        dashboardBtn.classList.add('text-gray-700', 'hover:text-blue-500');
+    }
+}
 
 // Auth Tab Switching
 document.getElementById('login-tab').addEventListener('click', () => {
@@ -94,12 +176,14 @@ document.getElementById('logout-btn').addEventListener('click', () => {
 document.getElementById('nav-dashboard').addEventListener('click', () => {
     document.getElementById('dashboard-page').classList.remove('hidden');
     document.getElementById('stats-page').classList.add('hidden');
+    setActiveNav('dashboard');
     loadIdeas();
 });
 
 document.getElementById('nav-stats').addEventListener('click', () => {
     document.getElementById('dashboard-page').classList.add('hidden');
     document.getElementById('stats-page').classList.remove('hidden');
+    setActiveNav('stats');
     loadStats();
 });
 
@@ -115,6 +199,7 @@ function showApp() {
     document.getElementById('auth-section').classList.add('hidden');
     document.getElementById('app-section').classList.remove('hidden');
     document.getElementById('user-email').textContent = localStorage.getItem('userEmail');
+    setActiveNav('dashboard');
     loadIdeas();
 }
 
@@ -142,7 +227,7 @@ async function loadIdeas(page = 1) {
         const data = await res.json();
 
         if (!res.ok) {
-            alert('Gagal memuat ide');
+            showNotification('Gagal memuat ide', 'error');
             return;
         }
 
@@ -150,7 +235,7 @@ async function loadIdeas(page = 1) {
         displayPagination(data.pagination);
         currentPage = page;
     } catch (error) {
-        alert('Gagal memuat ide');
+        showNotification('Gagal memuat ide', 'error');
     }
 }
 
@@ -280,6 +365,7 @@ document.getElementById('idea-form').addEventListener('submit', async (e) => {
         }
 
         document.getElementById('idea-modal').classList.add('hidden');
+        showNotification(ideaId ? 'Ide berhasil diperbarui' : 'Ide berhasil ditambahkan', 'success');
         loadIdeas(currentPage);
     } catch (error) {
         showModalError('Gagal menyimpan ide');
@@ -303,7 +389,7 @@ async function viewIdeaDetail(id) {
         const data = await res.json();
 
         if (!res.ok) {
-            alert('Gagal memuat detail ide');
+            showNotification('Gagal memuat detail ide', 'error');
             return;
         }
 
@@ -311,7 +397,7 @@ async function viewIdeaDetail(id) {
         displayIdeaDetail(data.idea, data.attachments, data.stats);
         document.getElementById('detail-modal').classList.remove('hidden');
     } catch (error) {
-        alert('Gagal memuat detail ide');
+        showNotification('Gagal memuat detail ide', 'error');
     }
 }
 
@@ -390,7 +476,7 @@ document.getElementById('edit-idea-btn').addEventListener('click', async () => {
         const data = await res.json();
 
         if (!res.ok) {
-            alert('Gagal memuat ide');
+            showNotification('Gagal memuat ide', 'error');
             return;
         }
 
@@ -404,30 +490,34 @@ document.getElementById('edit-idea-btn').addEventListener('click', async () => {
         document.getElementById('modal-error').classList.add('hidden');
         document.getElementById('idea-modal').classList.remove('hidden');
     } catch (error) {
-        alert('Gagal memuat ide');
+        showNotification('Gagal memuat ide', 'error');
     }
 });
 
 // Delete Idea
-document.getElementById('delete-idea-btn').addEventListener('click', async () => {
-    if (!confirm('Apakah Anda yakin ingin menghapus ide ini?')) return;
+document.getElementById('delete-idea-btn').addEventListener('click', () => {
+    showConfirmModal(
+        'Apakah Anda yakin ingin menghapus ide ini? Semua lampiran terkait juga akan dihapus. Tindakan ini tidak dapat dibatalkan.',
+        async () => {
+            try {
+                const res = await fetch(`${API_URL}/api/ideas/${currentIdeaId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
 
-    try {
-        const res = await fetch(`${API_URL}/api/ideas/${currentIdeaId}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+                if (!res.ok) {
+                    showNotification('Gagal menghapus ide', 'error');
+                    return;
+                }
 
-        if (!res.ok) {
-            alert('Gagal menghapus ide');
-            return;
+                document.getElementById('detail-modal').classList.add('hidden');
+                showNotification('Ide berhasil dihapus', 'success');
+                loadIdeas(currentPage);
+            } catch (error) {
+                showNotification('Gagal menghapus ide', 'error');
+            }
         }
-
-        document.getElementById('detail-modal').classList.add('hidden');
-        loadIdeas(currentPage);
-    } catch (error) {
-        alert('Gagal menghapus ide');
-    }
+    );
 });
 
 // Upload File
@@ -452,37 +542,42 @@ document.getElementById('file-upload').addEventListener('change', async (e) => {
         });
 
         if (!res.ok) {
-            alert('Gagal mengupload file');
+            showNotification('Gagal mengupload file', 'error');
             return;
         }
 
+        showNotification('File berhasil diupload', 'success');
         viewIdeaDetail(currentIdeaId);
     } catch (error) {
-        alert('Gagal mengupload file');
+        showNotification('Gagal mengupload file', 'error');
     }
 
     e.target.value = '';
 });
 
 // Delete Attachment
-async function deleteAttachment(id) {
-    if (!confirm('Hapus lampiran ini?')) return;
+function deleteAttachment(id) {
+    showConfirmModal(
+        'Apakah Anda yakin ingin menghapus lampiran ini? Tindakan ini tidak dapat dibatalkan.',
+        async () => {
+            try {
+                const res = await fetch(`${API_URL}/api/attachments/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
 
-    try {
-        const res = await fetch(`${API_URL}/api/attachments/${id}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+                if (!res.ok) {
+                    showNotification('Gagal menghapus lampiran', 'error');
+                    return;
+                }
 
-        if (!res.ok) {
-            alert('Gagal menghapus lampiran');
-            return;
+                showNotification('Lampiran berhasil dihapus', 'success');
+                viewIdeaDetail(currentIdeaId);
+            } catch (error) {
+                showNotification('Gagal menghapus lampiran', 'error');
+            }
         }
-
-        viewIdeaDetail(currentIdeaId);
-    } catch (error) {
-        alert('Gagal menghapus lampiran');
-    }
+    );
 }
 
 // Load Stats
@@ -495,13 +590,13 @@ async function loadStats() {
         const data = await res.json();
 
         if (!res.ok) {
-            alert('Gagal memuat statistik');
+            showNotification('Gagal memuat statistik', 'error');
             return;
         }
 
         displayStats(data);
     } catch (error) {
-        alert('Gagal memuat statistik');
+        showNotification('Gagal memuat statistik', 'error');
     }
 }
 
