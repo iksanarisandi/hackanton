@@ -20,6 +20,7 @@
         }
         /* Prevent horizontal scroll on mobile */
         body { overflow-x: hidden; }
+        
         /* Custom notification animation */
         @keyframes slideIn {
             from { transform: translateY(-100%); opacity: 0; }
@@ -31,6 +32,33 @@
         }
         .notification-enter { animation: slideIn 0.3s ease-out; }
         .notification-exit { animation: slideOut 0.3s ease-in; }
+        
+        /* Lightbox styles */
+        .lightbox-overlay {
+            background: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(10px);
+        }
+        .lightbox-content {
+            max-width: 90vw;
+            max-height: 90vh;
+            object-fit: contain;
+        }
+        @keyframes zoomIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .lightbox-enter {
+            animation: zoomIn 0.3s ease-out;
+        }
+        .lightbox-button {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            transition: all 0.2s;
+        }
+        .lightbox-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -141,6 +169,65 @@
                     <button type="button" id="cancel-url-btn" class="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg font-semibold hover:bg-gray-400 transition">Batal</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Lightbox Modal for Media Preview -->
+    <div id="lightbox" class="hidden fixed inset-0 lightbox-overlay flex items-center justify-center z-[80]">
+        <!-- Close Button -->
+        <button id="lightbox-close" class="absolute top-4 right-4 w-12 h-12 lightbox-button rounded-full flex items-center justify-center text-white text-2xl z-10">
+            ×
+        </button>
+        
+        <!-- Previous Button -->
+        <button id="lightbox-prev" class="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 lightbox-button rounded-full flex items-center justify-center text-white text-2xl hidden">
+            ‹
+        </button>
+        
+        <!-- Next Button -->
+        <button id="lightbox-next" class="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 lightbox-button rounded-full flex items-center justify-center text-white text-2xl hidden">
+            ›
+        </button>
+        
+        <!-- Media Container -->
+        <div id="lightbox-container" class="relative max-w-[90vw] max-h-[90vh] flex items-center justify-center">
+            <!-- Image -->
+            <img id="lightbox-image" class="hidden lightbox-content lightbox-enter" alt="Preview">
+            
+            <!-- Video -->
+            <video id="lightbox-video" class="hidden lightbox-content lightbox-enter" controls autoplay>
+                Your browser does not support video.
+            </video>
+            
+            <!-- Audio -->
+            <div id="lightbox-audio" class="hidden bg-white rounded-lg p-8 lightbox-enter">
+                <audio controls autoplay class="w-full">
+                    Your browser does not support audio.
+                </audio>
+                <p id="lightbox-audio-title" class="mt-4 text-center text-gray-800 font-medium"></p>
+            </div>
+        </div>
+        
+        <!-- Bottom Controls -->
+        <div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3">
+            <!-- Download Button -->
+            <a id="lightbox-download" href="#" download class="px-4 py-2 lightbox-button rounded-lg text-white flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Download
+            </a>
+            
+            <!-- Zoom Controls (for images only) -->
+            <div id="lightbox-zoom-controls" class="hidden flex items-center gap-2">
+                <button id="lightbox-zoom-out" class="w-10 h-10 lightbox-button rounded-lg text-white text-xl">−</button>
+                <span id="lightbox-zoom-level" class="text-white px-3">100%</span>
+                <button id="lightbox-zoom-in" class="w-10 h-10 lightbox-button rounded-lg text-white text-xl">+</button>
+                <button id="lightbox-zoom-reset" class="px-3 py-2 lightbox-button rounded-lg text-white text-sm">Reset</button>
+            </div>
+            
+            <!-- Counter -->
+            <span id="lightbox-counter" class="px-4 py-2 lightbox-button rounded-lg text-white hidden"></span>
         </div>
     </div>
 

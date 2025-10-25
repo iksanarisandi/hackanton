@@ -438,16 +438,21 @@ function displayIdeaDetail(idea, attachments, stats) {
     displayAttachments(attachments);
 }
 
+// Store current attachments for lightbox navigation
+let currentAttachments = [];
+let currentLightboxIndex = 0;
+
 // Display Attachments
 function displayAttachments(attachments) {
     const container = document.getElementById('attachments-list');
+    currentAttachments = attachments;
 
     if (attachments.length === 0) {
         container.innerHTML = '<p class="text-gray-500 text-sm">Belum ada lampiran</p>';
         return;
     }
 
-    container.innerHTML = attachments.map(att => {
+    container.innerHTML = attachments.map((att, index) => {
         // If type is URL
         if (att.type === 'url') {
             return `
@@ -481,6 +486,7 @@ function displayAttachments(attachments) {
         const isVideo = ['mp4', 'mov', 'avi', 'webm'].includes(fileExt);
         const isAudio = ['mp3', 'wav', 'ogg'].includes(fileExt);
         const isPdf = fileExt === 'pdf';
+        const canPreview = isImage || isVideo || isAudio;
         
         let icon = '📄';
         if (isImage) icon = '🖼️';
@@ -491,14 +497,14 @@ function displayAttachments(attachments) {
         return `
             <div class="bg-gray-50 rounded-lg p-3 space-y-2">
                 ${isImage ? `
-                    <a href="${att.file_url}" target="_blank" class="block">
+                    <div class="cursor-pointer" onclick="openLightbox(${index})">
                         <img src="${att.file_url}" alt="${escapeHtml(att.file_name)}" 
-                             class="w-full h-32 object-cover rounded-lg hover:opacity-90 transition cursor-pointer"
+                             class="w-full h-32 object-cover rounded-lg hover:opacity-90 transition"
                              onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
                         <div style="display:none;" class="w-full h-32 bg-gray-200 rounded-lg flex items-center justify-center">
                             <span class="text-4xl">${icon}</span>
                         </div>
-                    </a>
+                    </div>
                 ` : ''}
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-3 flex-1 min-w-0">
@@ -508,14 +514,26 @@ function displayAttachments(attachments) {
                             <p class="text-xs text-gray-500">${formatFileSize(att.size)}</p>
                         </div>
                     </div>
-                    <div class="flex items-center space-x-2 flex-shrink-0">
-                        <a href="${att.file_url}" target="_blank" download="${att.file_name}" 
-                           class="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition">
-                            ${isImage || isVideo || isAudio || isPdf ? 'Lihat' : 'Download'}
+                    <div class="flex flex-wrap items-center gap-1 sm:gap-2 flex-shrink-0">
+                        ${canPreview ? `
+                            <button onclick="openLightbox(${index})" 
+                                    class="px-2 sm:px-3 py-1 bg-purple-500 text-white text-xs sm:text-sm rounded hover:bg-purple-600 transition">
+                                👁️ Preview
+                            </button>
+                        ` : ''}
+                        <a href="${att.file_url}" download="${att.file_name}" 
+                           class="px-2 sm:px-3 py-1 bg-blue-500 text-white text-xs sm:text-sm rounded hover:bg-blue-600 transition">
+                            ⬇️ ${canPreview ? '' : 'Download'}
                         </a>
+                        ${isPdf || (!canPreview && !isPdf) ? `
+                            <a href="${att.file_url}" target="_blank" 
+                               class="px-2 sm:px-3 py-1 bg-green-500 text-white text-xs sm:text-sm rounded hover:bg-green-600 transition">
+                                🔗
+                            </a>
+                        ` : ''}
                         <button onclick="deleteAttachment(${att.id})" 
-                                class="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition">
-                            Hapus
+                                class="px-2 sm:px-3 py-1 bg-red-500 text-white text-xs sm:text-sm rounded hover:bg-red-600 transition">
+                                🗑️
                         </button>
                     </div>
                 </div>
@@ -775,6 +793,153 @@ function displayStats(data) {
         }
     });
 }
+
+// Lightbox functionality
+let currentZoom = 1;
+
+function openLightbox(index) {
+    const att = currentAttachments.filter(a => a.type === 'file')[index];
+    if (!att) return;
+    
+    currentLightboxIndex = index;
+    currentZoom = 1;
+    
+    const lightbox = document.getElementById('lightbox');
+    const image = document.getElementById('lightbox-image');
+    const video = document.getElementById('lightbox-video');
+    const audio = document.getElementById('lightbox-audio');
+    const audioPlayer = audio.querySelector('audio');
+    const audioTitle = document.getElementById('lightbox-audio-title');
+    const downloadBtn = document.getElementById('lightbox-download');
+    const zoomControls = document.getElementById('lightbox-zoom-controls');
+    const counter = document.getElementById('lightbox-counter');
+    const prevBtn = document.getElementById('lightbox-prev');
+    const nextBtn = document.getElementById('lightbox-next');
+    
+    // Hide all media first
+    image.classList.add('hidden');
+    video.classList.add('hidden');
+    audio.classList.add('hidden');
+    zoomControls.classList.add('hidden');
+    
+    const fileExt = att.file_name.split('.').pop().toLowerCase();
+    const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(fileExt);
+    const isVideo = ['mp4', 'mov', 'avi', 'webm'].includes(fileExt);
+    const isAudio = ['mp3', 'wav', 'ogg'].includes(fileExt);
+    
+    // Set download button
+    downloadBtn.href = att.file_url;
+    downloadBtn.download = att.file_name;
+    
+    // Show appropriate media
+    if (isImage) {
+        image.src = att.file_url;
+        image.alt = att.file_name;
+        image.classList.remove('hidden');
+        zoomControls.classList.remove('hidden');
+        updateZoomLevel();
+    } else if (isVideo) {
+        video.src = att.file_url;
+        video.classList.remove('hidden');
+    } else if (isAudio) {
+        audioPlayer.src = att.file_url;
+        audioTitle.textContent = att.file_name;
+        audio.classList.remove('hidden');
+    }
+    
+    // Show/hide navigation
+    const fileAttachments = currentAttachments.filter(a => a.type === 'file');
+    if (fileAttachments.length > 1) {
+        prevBtn.classList.remove('hidden');
+        nextBtn.classList.remove('hidden');
+        counter.classList.remove('hidden');
+        counter.textContent = `${index + 1} / ${fileAttachments.length}`;
+    } else {
+        prevBtn.classList.add('hidden');
+        nextBtn.classList.add('hidden');
+        counter.classList.add('hidden');
+    }
+    
+    lightbox.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeLightbox() {
+    const lightbox = document.getElementById('lightbox');
+    const video = document.getElementById('lightbox-video');
+    const audio = document.getElementById('lightbox-audio');
+    const audioPlayer = audio.querySelector('audio');
+    
+    // Stop media playback
+    video.pause();
+    video.src = '';
+    audioPlayer.pause();
+    audioPlayer.src = '';
+    
+    lightbox.classList.add('hidden');
+    document.body.style.overflow = '';
+    currentZoom = 1;
+}
+
+function navigateLightbox(direction) {
+    const fileAttachments = currentAttachments.filter(a => a.type === 'file');
+    currentLightboxIndex += direction;
+    
+    if (currentLightboxIndex < 0) {
+        currentLightboxIndex = fileAttachments.length - 1;
+    } else if (currentLightboxIndex >= fileAttachments.length) {
+        currentLightboxIndex = 0;
+    }
+    
+    openLightbox(currentLightboxIndex);
+}
+
+function zoomImage(delta) {
+    const image = document.getElementById('lightbox-image');
+    currentZoom = Math.max(0.5, Math.min(3, currentZoom + delta));
+    image.style.transform = `scale(${currentZoom})`;
+    updateZoomLevel();
+}
+
+function resetZoom() {
+    currentZoom = 1;
+    const image = document.getElementById('lightbox-image');
+    image.style.transform = 'scale(1)';
+    updateZoomLevel();
+}
+
+function updateZoomLevel() {
+    const zoomLevel = document.getElementById('lightbox-zoom-level');
+    zoomLevel.textContent = `${Math.round(currentZoom * 100)}%`;
+}
+
+// Lightbox event listeners
+document.getElementById('lightbox-close').addEventListener('click', closeLightbox);
+document.getElementById('lightbox-prev').addEventListener('click', () => navigateLightbox(-1));
+document.getElementById('lightbox-next').addEventListener('click', () => navigateLightbox(1));
+document.getElementById('lightbox-zoom-in').addEventListener('click', () => zoomImage(0.25));
+document.getElementById('lightbox-zoom-out').addEventListener('click', () => zoomImage(-0.25));
+document.getElementById('lightbox-zoom-reset').addEventListener('click', resetZoom);
+
+// Close lightbox on overlay click
+document.getElementById('lightbox').addEventListener('click', (e) => {
+    if (e.target.id === 'lightbox') {
+        closeLightbox();
+    }
+});
+
+// Keyboard controls for lightbox
+document.addEventListener('keydown', (e) => {
+    const lightbox = document.getElementById('lightbox');
+    if (!lightbox.classList.contains('hidden')) {
+        if (e.key === 'Escape') closeLightbox();
+        else if (e.key === 'ArrowLeft') navigateLightbox(-1);
+        else if (e.key === 'ArrowRight') navigateLightbox(1);
+        else if (e.key === '+' || e.key === '=') zoomImage(0.25);
+        else if (e.key === '-') zoomImage(-0.25);
+        else if (e.key === '0') resetZoom();
+    }
+});
 
 // Utilities
 function escapeHtml(text) {
