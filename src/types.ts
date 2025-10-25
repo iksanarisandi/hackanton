@@ -30,6 +30,7 @@ export interface Attachment {
   file_name: string;
   file_url: string;
   size: number;
+  type: 'file' | 'url';
   created_at: string;
 }
 

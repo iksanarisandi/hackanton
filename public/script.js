@@ -448,6 +448,34 @@ function displayAttachments(attachments) {
     }
 
     container.innerHTML = attachments.map(att => {
+        // If type is URL
+        if (att.type === 'url') {
+            return `
+                <div class="bg-gray-50 rounded-lg p-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3 flex-1 min-w-0">
+                            <span class="text-2xl flex-shrink-0">🔗</span>
+                            <div class="flex-1 min-w-0">
+                                <p class="font-medium text-gray-800 truncate">${escapeHtml(att.file_name)}</p>
+                                <p class="text-xs text-gray-500 truncate">${escapeHtml(att.file_url)}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2 flex-shrink-0">
+                            <a href="${att.file_url}" target="_blank" rel="noopener noreferrer"
+                               class="px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600 transition">
+                                Buka Link
+                            </a>
+                            <button onclick="deleteAttachment(${att.id})" 
+                                    class="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition">
+                                Hapus
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // If type is file
         const fileExt = att.file_name.split('.').pop().toLowerCase();
         const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(fileExt);
         const isVideo = ['mp4', 'mov', 'avi', 'webm'].includes(fileExt);
@@ -588,6 +616,58 @@ document.getElementById('file-upload').addEventListener('change', async (e) => {
     }
 
     e.target.value = '';
+});
+
+// Add URL Button
+document.getElementById('add-url-btn').addEventListener('click', () => {
+    document.getElementById('url-modal').classList.remove('hidden');
+    document.getElementById('url-form').reset();
+    document.getElementById('url-error').classList.add('hidden');
+});
+
+// Cancel URL Modal
+document.getElementById('cancel-url-btn').addEventListener('click', () => {
+    document.getElementById('url-modal').classList.add('hidden');
+});
+
+// Add URL Form Submit
+document.getElementById('url-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const url = document.getElementById('url-input').value;
+    const title = document.getElementById('url-title').value;
+
+    try {
+        const res = await fetch(`${API_URL}/api/attachments/add-url`, {
+            method: 'POST',
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+                idea_id: currentIdeaId, 
+                url, 
+                title: title || url 
+            })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            const errorEl = document.getElementById('url-error');
+            errorEl.textContent = data.error || 'Gagal menambahkan URL';
+            errorEl.classList.remove('hidden');
+            return;
+        }
+
+        document.getElementById('url-modal').classList.add('hidden');
+        showNotification('Link berhasil ditambahkan', 'success');
+        viewIdeaDetail(currentIdeaId);
+    } catch (error) {
+        const errorEl = document.getElementById('url-error');
+        errorEl.textContent = 'Gagal menambahkan URL';
+        errorEl.classList.remove('hidden');
+    }
 });
 
 // Delete Attachment

@@ -6,6 +6,52 @@ const attachments = new Hono<{ Bindings: Env }>();
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
+attachments.post('/add-url', async (c) => {
+  const userId = c.get('userId');
+
+  try {
+    const { idea_id, url, title } = await c.req.json();
+
+    if (!url || !idea_id) {
+      return c.json({ error: 'URL and idea_id are required' }, 400);
+    }
+
+    // Validate URL format
+    try {
+      new URL(url);
+    } catch {
+      return c.json({ error: 'Invalid URL format' }, 400);
+    }
+
+    const idea = await c.env.DB.prepare(
+      'SELECT * FROM ideas WHERE id = ? AND user_id = ?'
+    ).bind(idea_id, userId).first<Idea>();
+
+    if (!idea) {
+      return c.json({ error: 'Idea not found or access denied' }, 404);
+    }
+
+    const fileName = title || url;
+
+    const result = await c.env.DB.prepare(
+      'INSERT INTO attachments (idea_id, file_name, file_url, size, type) VALUES (?, ?, ?, ?, ?)'
+    ).bind(idea_id, fileName, url, 0, 'url').run();
+
+    const attachmentId = result.meta.last_row_id;
+    const attachment = await c.env.DB.prepare(
+      'SELECT * FROM attachments WHERE id = ?'
+    ).bind(attachmentId).first<Attachment>();
+
+    return c.json({
+      message: 'URL added successfully',
+      attachment
+    }, 201);
+  } catch (error) {
+    console.error('Add URL error:', error);
+    return c.json({ error: 'Failed to add URL' }, 500);
+  }
+});
+
 attachments.post('/upload', async (c) => {
   const userId = c.get('userId');
 
@@ -47,11 +93,12 @@ attachments.post('/upload', async (c) => {
       },
     });
 
-    const fileUrl = `/api/attachments/file/${fileName}`;
+    // Use custom domain for R2 file access
+    const fileUrl = `https://adaide.akses.digital/files/${fileName}`;
 
     const result = await c.env.DB.prepare(
-      'INSERT INTO attachments (idea_id, file_name, file_url, size) VALUES (?, ?, ?, ?)'
-    ).bind(ideaId, file.name, fileUrl, file.size).run();
+      'INSERT INTO attachments (idea_id, file_name, file_url, size, type) VALUES (?, ?, ?, ?, ?)'
+    ).bind(ideaId, file.name, fileUrl, file.size, 'file').run();
 
     const attachmentId = result.meta.last_row_id;
     const attachment = await c.env.DB.prepare(

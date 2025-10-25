@@ -33,6 +33,29 @@ app.get('/api/auth/me', authMiddleware, async (c) => {
   return c.json({ user: { id: userId, email: userEmail } });
 });
 
+// Serve R2 files with custom domain
+app.get('/files/:fileName', async (c) => {
+  const fileName = c.req.param('fileName');
+
+  try {
+    const object = await c.env.BUCKET.get(fileName);
+
+    if (!object) {
+      return c.notFound();
+    }
+
+    const headers = new Headers();
+    object.writeHttpMetadata(headers);
+    headers.set('etag', object.httpEtag);
+    headers.set('Cache-Control', 'public, max-age=31536000');
+
+    return new Response(object.body, { headers });
+  } catch (error) {
+    console.error('Get file error:', error);
+    return c.notFound();
+  }
+});
+
 // Serve static files from public folder
 app.get('/', serveStatic({ path: './index.html' }));
 app.get('/script.js', serveStatic({ path: './script.js' }));
