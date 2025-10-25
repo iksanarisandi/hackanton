@@ -4,6 +4,18 @@ let currentPage = 1;
 let currentIdeaId = null;
 let currentDeleteCallback = null;
 
+// Loading Screen
+function showLoading() {
+    document.getElementById('loading-screen').classList.remove('hidden');
+}
+
+function hideLoading() {
+    const loadingScreen = document.getElementById('loading-screen');
+    setTimeout(() => {
+        loadingScreen.classList.add('hidden');
+    }, 500); // Small delay for smooth transition
+}
+
 // Notification System
 function showNotification(message, type = 'info') {
     const notification = document.getElementById('notification');
@@ -204,9 +216,17 @@ function showApp() {
 }
 
 // Check Auth on Load
-if (token) {
-    showApp();
-}
+showLoading(); // Show loading on page load
+
+// Wait for DOM to be fully loaded
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        if (token) {
+            showApp();
+        }
+        hideLoading();
+    }, 300); // Small delay to show loading animation
+});
 
 // Load Ideas
 async function loadIdeas(page = 1) {
