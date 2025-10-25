@@ -928,8 +928,9 @@ document.getElementById('lightbox').addEventListener('click', (e) => {
     }
 });
 
-// Keyboard controls for lightbox
+// Keyboard controls for modals
 document.addEventListener('keydown', (e) => {
+    // Lightbox controls
     const lightbox = document.getElementById('lightbox');
     if (!lightbox.classList.contains('hidden')) {
         if (e.key === 'Escape') closeLightbox();
@@ -938,6 +939,54 @@ document.addEventListener('keydown', (e) => {
         else if (e.key === '+' || e.key === '=') zoomImage(0.25);
         else if (e.key === '-') zoomImage(-0.25);
         else if (e.key === '0') resetZoom();
+        return;
+    }
+
+    // Close other modals with ESC key
+    if (e.key === 'Escape') {
+        const ideaModal = document.getElementById('idea-modal');
+        const detailModal = document.getElementById('detail-modal');
+        const urlModal = document.getElementById('url-modal');
+        const confirmModal = document.getElementById('confirm-modal');
+
+        if (!ideaModal.classList.contains('hidden')) {
+            ideaModal.classList.add('hidden');
+        } else if (!detailModal.classList.contains('hidden')) {
+            detailModal.classList.add('hidden');
+        } else if (!urlModal.classList.contains('hidden')) {
+            urlModal.classList.add('hidden');
+        } else if (!confirmModal.classList.contains('hidden')) {
+            closeConfirmModal();
+        }
+    }
+});
+
+// Close modals on backdrop click
+// Add/Edit Idea Modal
+document.getElementById('idea-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'idea-modal') {
+        document.getElementById('idea-modal').classList.add('hidden');
+    }
+});
+
+// Detail Modal
+document.getElementById('detail-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'detail-modal') {
+        document.getElementById('detail-modal').classList.add('hidden');
+    }
+});
+
+// URL Modal
+document.getElementById('url-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'url-modal') {
+        document.getElementById('url-modal').classList.add('hidden');
+    }
+});
+
+// Confirmation Modal
+document.getElementById('confirm-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'confirm-modal') {
+        closeConfirmModal();
     }
 });
 
